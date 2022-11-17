@@ -1,0 +1,23 @@
+[package]
+name = "my_binary"
+version = "0.1.0"
+edition = "2021"
+# description = ""
+# keywords = ""
+# documentation = ""
+# homepage = ""
+# repository = ""
+# authors = [""]
+# license = ""
+# rust-version = ""
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tonic = "0.8.2"
+tokio = { version = "1.18.0", features = ["macros", "rt-multi-thread"] }
+prost = "0.11.2"
+tonic-reflection = "0.5.0"
+
+[build-dependencies]
+tonic-build = "0.8.2"
