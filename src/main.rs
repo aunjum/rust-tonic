@@ -1,90 +1,61 @@
-use tonic::{transport::Server, Request, Response, Status};
+// https://docs.rs/postgres/0.15.2/postgres/
+extern crate postgres;
+extern crate redis;
+extern crate serde;
+extern crate serde_json;
+extern crate dotenv;
 
-use bookstore::bookstore_server::{Bookstore, BookstoreServer};
-use bookstore::{GetBookRequest, GetBookResponse};
+extern crate chrono;
 
-use user::user_server::{User, UserServer};
-use user::{GetUserRequest, GetUserResponse};
-
-mod bookstore {
-    include!("bookstore.rs");
-
-    pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
-        tonic::include_file_descriptor_set!("greeter_descriptor");
+pub mod user {
+    tonic::include_proto!("user");
 }
 
-mod user {
-    include!("user.rs");
+use tonic::{transport::Server};
 
-    pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
-        tonic::include_file_descriptor_set!("greeter_descriptor");
-}
+use user::{
+    user_service_server::{UserServiceServer},
+};
 
+extern crate uuid;
 
-#[derive(Default)]
-pub struct BookStoreImpl {}
+extern crate console;
+use console::Style;
 
-#[tonic::async_trait]
-impl Bookstore for BookStoreImpl {
-    async fn get_book(
-        &self,
-        request: Request<GetBookRequest>,
-    ) -> Result<Response<GetBookResponse>, Status> {
-        println!("Request from {:?}", request.remote_addr());
+mod db_connection;
 
-        let response = GetBookResponse {
-            id: request.into_inner().id,
-            author: "Peter".to_owned(),
-            name: "Zero to One".to_owned(),
-            year: 2014,
-        };
-        Ok(Response::new(response))
-    }
-}
+mod service;
+use crate::service::user::postgresql_grpc::{
+    User,
+};
 
-#[derive(Default)]
+// Read all the documenation of redis crate.($cargo doc -p redis --open)
 
-pub struct UserImpl {}
-
-#[tonic::async_trait]
-impl User for UserImpl {
-    async fn get_user(
-        &self,
-        request: Request<GetUserRequest>,
-    ) -> Result<Response<GetUserResponse>, Status> {
-        println!("Request from {:?}", request.remote_addr());
-
-        let response = GetUserResponse {
-            id: request.into_inner().id,
-            first_name: "Tanvir".to_owned(),
-            last_name: "Aunjum".to_owned(),
-            nick_name: "Sunny".to_owned(),
-            gender: "Male".to_owned(),
-            age: 27,
-        };
-        Ok(Response::new(response))
-    }
-}
+// Refer to these
+// 1. http://zsiciarz.github.io/24daysofrust/book/vol1/day18.html
+// 2. https://github.com/actix/examples/blob/master/redis-session/src/main.rs
+// 3. https://github.com/gabisurita/fullstack-rust/blob/master/server/src/repository.rs
+// 4. Test this function https://docs.rs/redis/0.13.0/redis/trait.Commands.html#method.getset
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:50051".parse().unwrap();
-    let bookstore = BookStoreImpl::default();
-    let user = UserImpl::default();
+    let addr = "0.0.0.0:50051".parse().unwrap();
+    let user = User::default();
 
-    let reflection_service = tonic_reflection::server::Builder::configure()
-        .register_encoded_file_descriptor_set(&[bookstore::FILE_DESCRIPTOR_SET, user::FILE_DESCRIPTOR_SET].concat())
-        .build()
-        .unwrap();
+    let blue = Style::new()
+        .blue();
 
-    println!("Bookstore, User server listening on {}", addr);
+    println!("\nRust gRPC Server ready at {}", blue.apply_to(addr));
 
     Server::builder()
-        .add_service(BookstoreServer::new(bookstore))
-        .add_service(UserServer::new(user))
-        .add_service(reflection_service)
+        .add_service(UserServiceServer::new(user))
         .serve(addr)
         .await?;
 
     Ok(())
 }
+
+// 1. Read serde documenation. Find how to use macro instead of manual implementation at server/user/redis.
+// 2. How to compare the response time from Redis and Postgresql programmatically with Rust and not CURL.
+// 3. Read more redis documentation.
+// 4. Deploy it.

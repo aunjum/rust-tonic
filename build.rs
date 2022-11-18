@@ -1,21 +1,21 @@
-use std::{env, path::PathBuf};
+// Cargo will pick up on the existence of this file, then compile and execute it before the rest of the crate is built. This can be used to generate code at compile time. 
 
-fn main() {
-    let proto_file_bookstore = "./proto/bookstore.proto";
-    let proto_file_user = "./proto/user.proto";
+// https://docs.rs/prost-build/0.3.2/prost_build/struct.Config.html#examples-2
+// https://docs.rs/tonic-build/0.1.0-beta.1/tonic_build/struct.Builder.html
+// https://github.com/hyperium/tonic/tree/master/tonic-build#configuration
 
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // It will work with src_manually_implementing_serde
+    // tonic_build::compile_protos("proto/user/user.proto").unwrap();
+    // Ok(())
 
+    // It will work with src(_not_manually_implementing_serde).
     tonic_build::configure()
-        .build_server(true)
-        .file_descriptor_set_path(out_dir.join("greeter_descriptor.bin"))
-        .out_dir("./src")
+        // It is included in the out/user.rs but the compiler says it can not find them.
+        .type_attribute(".user.UserReply", "#[derive(serde::Serialize, serde::Deserialize)]")
         .compile(
-            &[proto_file_bookstore, proto_file_user],
-            &["."]
-        )
-        .unwrap_or_else(|e| panic!("protobuf compile error: {}", e));
-
-    println!("cargo:rerun-if-changed={}", proto_file_bookstore);
-    println!("cargo:rerun-if-changed={}", proto_file_user);
+            &["proto/user/user.proto"],
+            &["proto/user"]
+        )?;
+    Ok(())
 }
